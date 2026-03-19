@@ -137,6 +137,10 @@ Vector similarity search over compliance controls returns plausible but wrong ma
 
 The judge is a second LLM call — cheap (classification, not generation) and fast (small payload). It asks: does this control specifically address what the commit changed? Not "is this semantically related" but "would citing this control in an assessment be accurate." That question requires domain reasoning the embedding model doesn't have.
 
+## Dogfooding
+
+This repo runs commit-to-control on its own PRs. Every change to the tool gets mapped to the NIST controls it addresses — the compliance mapper mapping itself.
+
 ## License
 
 Apache 2.0
