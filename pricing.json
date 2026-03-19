@@ -1,0 +1,29 @@
+{
+  "amazon.titan-embed-text-v2:0": {
+    "input": 0.00000002,
+    "type": "embedding"
+  },
+  "anthropic.claude-3-haiku-20240307-v1:0": {
+    "input": 0.00000025,
+    "output": 0.00000125,
+    "type": "chat"
+  },
+  "text-embedding-3-small": {
+    "input": 0.00000002,
+    "type": "embedding"
+  },
+  "text-embedding-3-large": {
+    "input": 0.00000013,
+    "type": "embedding"
+  },
+  "gpt-4o-mini": {
+    "input": 0.00000015,
+    "output": 0.0000006,
+    "type": "chat"
+  },
+  "gpt-4o": {
+    "input": 0.0000025,
+    "output": 0.00001,
+    "type": "chat"
+  }
+}

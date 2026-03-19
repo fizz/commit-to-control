@@ -1,10 +1,17 @@
 NIST_XLSX_URL := https://csrc.nist.gov/files/pubs/sp/800/171/r2/upd1/final/docs/sp800-171r2-security-reqs.xlsx
 NIST_XLSX := data/sp800-171r2-security-reqs.xlsx
 CONTROLS_JSON := controls.json
+PRICING_JSON := pricing.json
 
-.PHONY: controls clean setup-db seed
+.PHONY: controls pricing clean setup-db seed
 
 controls: $(CONTROLS_JSON)
+
+pricing: $(PRICING_JSON)
+
+$(PRICING_JSON):
+	python3 scripts/fetch-pricing.py > $@
+	@echo "Wrote pricing to $@"
 
 setup-db:
 	psql "$(COMMIT2CONTROL_DB)" -c "CREATE EXTENSION IF NOT EXISTS vector;"
