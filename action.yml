@@ -1,0 +1,129 @@
+name: 'Commit to Control'
+description: 'Map git commits to NIST 800-171 controls via vector similarity + LLM judge. Shows which compliance controls each PR addresses.'
+author: 'fizz'
+
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  provider:
+    description: 'AI provider: "openai" (also Ollama, vLLM) or "bedrock"'
+    required: false
+    default: 'openai'
+  embed-model:
+    description: 'Embedding model ID (provider-specific)'
+    required: false
+  judge-model:
+    description: 'Judge/chat model ID (provider-specific)'
+    required: false
+  database-url:
+    description: 'PostgreSQL connection string (must have pgvector extension)'
+    required: true
+  top-k:
+    description: 'Number of candidate controls to retrieve before judging'
+    required: false
+    default: '8'
+  post-comment:
+    description: 'Post results as a PR comment (true/false)'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        pip install --quiet psycopg2-binary openpyxl
+        if [ "${{ inputs.provider }}" = "bedrock" ]; then
+          pip install --quiet boto3
+        else
+          pip install --quiet openai
+        fi
+
+    - name: Generate controls.json
+      shell: bash
+      run: make -C ${{ github.action_path }} controls
+
+    - name: Seed controls (if needed)
+      shell: bash
+      env:
+        COMMIT2CONTROL_DB: ${{ inputs.database-url }}
+        COMMIT2CONTROL_PROVIDER: ${{ inputs.provider }}
+        EMBED_MODEL: ${{ inputs.embed-model }}
+        JUDGE_MODEL: ${{ inputs.judge-model }}
+      run: |
+        python ${{ github.action_path }}/commit-to-control --provider ${{ inputs.provider }} --status 2>&1 | grep -q "Controls seeded" || \
+        python ${{ github.action_path }}/commit-to-control --provider ${{ inputs.provider }} --seed
+
+    - name: Get PR diff commits
+      shell: bash
+      id: commits
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          COMMITS=$(git log --format='%H' ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
+        else
+          COMMITS="${{ github.sha }}"
+        fi
+        echo "commits<<EOF" >> $GITHUB_OUTPUT
+        echo "$COMMITS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Map commits to controls
+      shell: bash
+      id: mapping
+      env:
+        COMMIT2CONTROL_DB: ${{ inputs.database-url }}
+        COMMIT2CONTROL_PROVIDER: ${{ inputs.provider }}
+        EMBED_MODEL: ${{ inputs.embed-model }}
+        JUDGE_MODEL: ${{ inputs.judge-model }}
+      run: |
+        OUTPUT=""
+        while IFS= read -r sha; do
+          [ -z "$sha" ] && continue
+          RESULT=$(python ${{ github.action_path }}/commit-to-control --provider ${{ inputs.provider }} --top ${{ inputs.top-k }} "$sha" 2>&1)
+          OUTPUT="${OUTPUT}${RESULT}\n\n---\n\n"
+        done <<< "${{ steps.commits.outputs.commits }}"
+
+        echo -e "$OUTPUT" > /tmp/control-mapping.txt
+        cat /tmp/control-mapping.txt
+
+    - name: Post PR comment
+      if: inputs.post-comment == 'true' && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const mapping = fs.readFileSync('/tmp/control-mapping.txt', 'utf8');
+
+          const marker = '<!-- commit-to-control -->';
+          const body = `${marker}\n## NIST 800-171 Control Mapping\n\n\`\`\`\n${mapping}\n\`\`\`\n`;
+
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+
+          const existing = comments.find(c => c.body.includes(marker));
+          if (existing) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existing.id,
+              body: body,
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body,
+            });
+          }

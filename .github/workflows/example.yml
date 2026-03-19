@@ -1,0 +1,79 @@
+# Example: add NIST 800-171 control mapping to every PR
+#
+# Prerequisites:
+#   1. A PostgreSQL database with pgvector extension
+#   2. An AI provider (OpenAI API key, or Ollama running somewhere, or AWS Bedrock)
+#   3. Controls are auto-seeded on first run
+#
+# For Ollama (self-hosted, no API costs):
+#   OPENAI_BASE_URL: http://your-ollama-host:11434/v1
+#   OPENAI_API_KEY: ollama
+#   EMBED_MODEL: nomic-embed-text
+#   JUDGE_MODEL: llama3.2
+
+name: NIST Control Mapping
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  # --- Option A: OpenAI (simplest) ---
+  # control-mapping:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #     - name: Map commits to NIST controls
+  #       uses: fizz/commit-to-control@v1
+  #       env:
+  #         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  #       with:
+  #         provider: openai
+  #         database-url: ${{ secrets.COMMIT2CONTROL_DB }}
+
+  # --- Option B: AWS Bedrock via OIDC (no stored credentials) ---
+  control-mapping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Map commits to NIST controls
+        uses: fizz/commit-to-control@v1
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          provider: bedrock
+          database-url: ${{ secrets.COMMIT2CONTROL_DB }}
+
+  # --- Option C: Ollama (self-hosted, free) ---
+  # control-mapping:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #     - name: Map commits to NIST controls
+  #       uses: fizz/commit-to-control@v1
+  #       env:
+  #         OPENAI_BASE_URL: http://your-ollama-host:11434/v1
+  #         OPENAI_API_KEY: ollama
+  #         EMBED_MODEL: nomic-embed-text
+  #         JUDGE_MODEL: llama3.2
+  #       with:
+  #         provider: openai
+  #         database-url: ${{ secrets.COMMIT2CONTROL_DB }}

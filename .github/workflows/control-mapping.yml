@@ -1,0 +1,32 @@
+# Dogfood: run commit-to-control on PRs to this repo
+name: NIST Control Mapping
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  control-mapping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::890742608375:role/GitHubActions-commit-to-control
+          aws-region: us-east-1
+
+      - uses: ./
+        env:
+          AWS_REGION: us-east-1
+        with:
+          provider: bedrock
+          database-url: ${{ secrets.COMMIT2CONTROL_DB }}
