@@ -19,7 +19,7 @@ Environment:
     For bedrock:
         AWS_REGION              AWS region
         EMBED_MODEL             Bedrock embedding model (default: amazon.titan-embed-text-v2:0)
-        JUDGE_MODEL             Bedrock judge model (default: anthropic.claude-3-haiku-20240307-v1:0)
+        JUDGE_MODEL             Bedrock judge model (default: anthropic.claude-3-5-haiku-20241022-v1:0)
 
     For openai (also covers Ollama, vLLM, etc.):
         OPENAI_API_KEY          API key (use "ollama" for Ollama)
@@ -174,7 +174,7 @@ def get_provider(name: str):
             _embed_bedrock,
             _judge_bedrock,
             os.environ.get("EMBED_MODEL") or "amazon.titan-embed-text-v2:0",
-            os.environ.get("JUDGE_MODEL") or "anthropic.claude-3-haiku-20240307-v1:0",
+            os.environ.get("JUDGE_MODEL") or "anthropic.claude-3-5-haiku-20241022-v1:0",
         )
     elif name == "openai":
         return (
