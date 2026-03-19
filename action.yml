@@ -111,9 +111,14 @@ runs:
       run: |
         # Extract all RELEVANT controls across all commits, deduplicate
         SUMMARY=$(grep '✓' /tmp/control-mapping.txt | sed 's/.*✓ //' | sort -u)
-        # Extract total cost across all commits
-        TOTAL_COST=$(grep '^ *Total' /tmp/control-mapping.txt | awk '{sum += $NF} END {printf "$%.6f", sum}')
-        [ -z "$TOTAL_COST" ] && TOTAL_COST='$0.000000'
+        # Aggregate costs by step across all commits
+        EMBED_TOKENS=$(grep '^ *embed' /tmp/control-mapping.txt | awk '{sum += $(NF-1)} END {printf "%d", sum}')
+        EMBED_COST=$(grep '^ *embed' /tmp/control-mapping.txt | awk '{sum += $NF} END {printf "%.6f", sum}')
+        JUDGE_TOKENS=$(grep '^ *judge' /tmp/control-mapping.txt | awk '{sum += $(NF-1)} END {printf "%d", sum}')
+        JUDGE_COST=$(grep '^ *judge' /tmp/control-mapping.txt | awk '{sum += $NF} END {printf "%.6f", sum}')
+        TOTAL_COST=$(grep '^ *Total' /tmp/control-mapping.txt | awk '{sum += $NF} END {printf "%.6f", sum}')
+        EMBED_MODEL=$(grep '^ *embed' /tmp/control-mapping.txt | head -1 | awk '{print $2}')
+        JUDGE_MODEL=$(grep '^ *judge' /tmp/control-mapping.txt | head -1 | awk '{print $2}')
 
         echo "## Controls addressed by this PR" > /tmp/control-summary.txt
         echo "" >> /tmp/control-summary.txt
@@ -124,8 +129,15 @@ runs:
         else
           echo "No NIST 800-171 controls identified in this PR." >> /tmp/control-summary.txt
         fi
-        echo "" >> /tmp/control-summary.txt
-        echo "**Cost:** ${TOTAL_COST}" >> /tmp/control-summary.txt
+        {
+          echo ""
+          echo "**Cost of this commit-to-control run:**"
+          echo "| Step | Model | Tokens | Cost |"
+          echo "|------|-------|-------:|-----:|"
+          echo "| Embed | ${EMBED_MODEL} | ${EMBED_TOKENS} | \$${EMBED_COST} |"
+          echo "| Judge | ${JUDGE_MODEL} | ${JUDGE_TOKENS} | \$${JUDGE_COST} |"
+          echo "| **Total** | | | **\$${TOTAL_COST}** |"
+        } >> /tmp/control-summary.txt
         echo ""
         echo "--- PR Summary ---"
         cat /tmp/control-summary.txt
