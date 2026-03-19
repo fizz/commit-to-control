@@ -61,7 +61,7 @@ runs:
         [ -n "${{ inputs.judge-model }}" ] && export JUDGE_MODEL="${{ inputs.judge-model }}" || true
         STATUS=$(python ${{ github.action_path }}/commit-to-control --provider ${{ inputs.provider }} --status 2>&1) || true
         echo "$STATUS"
-        if ! echo "$STATUS" | grep -q "Controls seeded"; then
+        if ! echo "$STATUS" | grep -qE "Controls seeded: [1-9]"; then
           python ${{ github.action_path }}/commit-to-control --provider ${{ inputs.provider }} --seed
         fi
 
