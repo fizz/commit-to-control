@@ -57,10 +57,13 @@ runs:
         COMMIT2CONTROL_DB: ${{ inputs.database-url }}
         COMMIT2CONTROL_PROVIDER: ${{ inputs.provider }}
       run: |
-        [ -n "${{ inputs.embed-model }}" ] && export EMBED_MODEL="${{ inputs.embed-model }}"
-        [ -n "${{ inputs.judge-model }}" ] && export JUDGE_MODEL="${{ inputs.judge-model }}"
-        python ${{ github.action_path }}/commit-to-control --provider ${{ inputs.provider }} --status 2>&1 | grep -q "Controls seeded" || \
-        python ${{ github.action_path }}/commit-to-control --provider ${{ inputs.provider }} --seed
+        [ -n "${{ inputs.embed-model }}" ] && export EMBED_MODEL="${{ inputs.embed-model }}" || true
+        [ -n "${{ inputs.judge-model }}" ] && export JUDGE_MODEL="${{ inputs.judge-model }}" || true
+        STATUS=$(python ${{ github.action_path }}/commit-to-control --provider ${{ inputs.provider }} --status 2>&1) || true
+        echo "$STATUS"
+        if ! echo "$STATUS" | grep -q "Controls seeded"; then
+          python ${{ github.action_path }}/commit-to-control --provider ${{ inputs.provider }} --seed
+        fi
 
     - name: Get PR diff commits
       shell: bash
