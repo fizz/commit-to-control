@@ -110,7 +110,7 @@ runs:
       shell: bash
       run: |
         # Extract all RELEVANT controls across all commits, deduplicate
-        SUMMARY=$(grep '✓' /tmp/control-mapping.txt | sed 's/.*✓ //' | sort -t'—' -k1,1 -u)
+        SUMMARY=$(grep '✓' /tmp/control-mapping.txt | sed 's/.*✓ //' | sort -u)
         if [ -n "$SUMMARY" ]; then
           echo "## Controls addressed by this PR" > /tmp/control-summary.txt
           echo "" >> /tmp/control-summary.txt
