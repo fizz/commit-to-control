@@ -85,17 +85,26 @@ runs:
         COMMIT2CONTROL_DB: ${{ inputs.database-url }}
         COMMIT2CONTROL_PROVIDER: ${{ inputs.provider }}
       run: |
-        [ -n "${{ inputs.embed-model }}" ] && export EMBED_MODEL="${{ inputs.embed-model }}"
-        [ -n "${{ inputs.judge-model }}" ] && export JUDGE_MODEL="${{ inputs.judge-model }}"
-        OUTPUT=""
+        [ -n "${{ inputs.embed-model }}" ] && export EMBED_MODEL="${{ inputs.embed-model }}" || true
+        [ -n "${{ inputs.judge-model }}" ] && export JUDGE_MODEL="${{ inputs.judge-model }}" || true
+
+        COMMITS="${{ steps.commits.outputs.commits }}"
+        OUTFILE=/tmp/control-mapping.txt
+        > "$OUTFILE"
+
         while IFS= read -r sha; do
           [ -z "$sha" ] && continue
-          RESULT=$(python ${{ github.action_path }}/commit-to-control --provider ${{ inputs.provider }} --top ${{ inputs.top-k }} "$sha" 2>&1)
-          OUTPUT="${OUTPUT}${RESULT}\n\n---\n\n"
-        done <<< "${{ steps.commits.outputs.commits }}"
+          echo "::group::Mapping commit $sha"
+          python ${{ github.action_path }}/commit-to-control \
+            --provider ${{ inputs.provider }} \
+            --top ${{ inputs.top-k }} \
+            "$sha" | tee -a "$OUTFILE"
+          echo -e "\n\n---\n" >> "$OUTFILE"
+          echo "::endgroup::"
+        done <<< "$COMMITS"
 
-        echo -e "$OUTPUT" > /tmp/control-mapping.txt
-        cat /tmp/control-mapping.txt
+        echo "--- Full output ---"
+        cat "$OUTFILE"
 
     - name: Post PR comment
       if: inputs.post-comment == 'true' && github.event_name == 'pull_request'
