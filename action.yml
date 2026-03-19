@@ -136,9 +136,13 @@ runs:
           echo "|------|-------|-------:|-----:|"
           echo "| Embed | ${EMBED_MODEL} | ${EMBED_TOKENS} | \$${EMBED_COST} |"
           echo "| Judge | ${JUDGE_MODEL} | ${JUDGE_TOKENS} | \$${JUDGE_COST} |"
-          BTC_USD=$(curl -sf "https://api.coinbase.com/v2/prices/BTC-USD/spot" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['amount'])" 2>/dev/null || echo "104000")
-          TOTAL_SATS=$(echo "$TOTAL_COST $BTC_USD" | awk '{printf "%.1f", $1 * 100000000 / $2}')
-          echo "| **Total** | | | **\$${TOTAL_COST}** (≈${TOTAL_SATS} sats) |"
+          BTC_USD=$(curl -sf "https://rate.sx/1btc" 2>/dev/null)
+          if [ -n "$BTC_USD" ]; then
+            TOTAL_SATS=$(echo "$TOTAL_COST $BTC_USD" | awk '{printf "%.1f", $1 * 100000000 / $2}')
+            echo "| **Total** | | | **\$${TOTAL_COST}** (≈${TOTAL_SATS} sats) |"
+          else
+            echo "| **Total** | | | **\$${TOTAL_COST}** |"
+          fi
         } >> /tmp/control-summary.txt
         echo ""
         echo "--- PR Summary ---"
