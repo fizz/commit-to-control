@@ -111,17 +111,21 @@ runs:
       run: |
         # Extract all RELEVANT controls across all commits, deduplicate
         SUMMARY=$(grep '✓' /tmp/control-mapping.txt | sed 's/.*✓ //' | sort -u)
+        # Extract total cost across all commits
+        TOTAL_COST=$(grep '^ *Total' /tmp/control-mapping.txt | awk '{sum += $NF} END {printf "$%.6f", sum}')
+        [ -z "$TOTAL_COST" ] && TOTAL_COST='$0.000000'
+
+        echo "## Controls addressed by this PR" > /tmp/control-summary.txt
+        echo "" >> /tmp/control-summary.txt
         if [ -n "$SUMMARY" ]; then
-          echo "## Controls addressed by this PR" > /tmp/control-summary.txt
-          echo "" >> /tmp/control-summary.txt
           echo "$SUMMARY" | while IFS= read -r line; do
             echo "✓ $line" >> /tmp/control-summary.txt
           done
         else
-          echo "## Controls addressed by this PR" > /tmp/control-summary.txt
-          echo "" >> /tmp/control-summary.txt
           echo "No NIST 800-171 controls identified in this PR." >> /tmp/control-summary.txt
         fi
+        echo "" >> /tmp/control-summary.txt
+        echo "**Cost:** ${TOTAL_COST}" >> /tmp/control-summary.txt
         echo ""
         echo "--- PR Summary ---"
         cat /tmp/control-summary.txt
