@@ -110,7 +110,7 @@ runs:
       shell: bash
       run: |
         # Extract all RELEVANT controls across all commits, deduplicate
-        SUMMARY=$(grep '✓' /tmp/control-mapping.txt | sed 's/.*✓ //' | sort -u)
+        SUMMARY=$({ grep '✓' /tmp/control-mapping.txt || true; } | sed 's/.*✓ //' | sort -u)
         # Aggregate costs by step across all commits
         EMBED_TOKENS=$(grep '^ *embed' /tmp/control-mapping.txt | awk '{sum += $(NF-1)} END {printf "%d", sum}')
         EMBED_COST=$(grep '^ *embed' /tmp/control-mapping.txt | awk '{sum += $NF} END {printf "%.6f", sum}')
