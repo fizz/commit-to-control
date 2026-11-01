@@ -1,0 +1,112 @@
+# Keeps the default Bedrock models and pricing.json current. Every day it:
+#
+#   1. Publishes any version tag that has no release yet, so a run that stopped
+#      halfway is finished by the next one.
+#   2. Replaces a default judge model that Bedrock no longer offers with its
+#      newest successor (scripts/heal-models.py), and opens an issue for a
+#      retired embedding model, which needs the controls seeded again.
+#   3. Prices the defaults from the AWS Price List (scripts/fetch-pricing.py).
+#   4. When anything changed, commits it to main, tags the next patch version
+#      and publishes the release.
+name: pricing
+
+on:
+  schedule:
+    - cron: "41 7 * * *"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Show what would be done; change nothing."
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  id-token: write
+  issues: write
+
+concurrency:
+  group: pricing
+  cancel-in-progress: false
+
+jobs:
+  pricing:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      DRY_RUN: ${{ inputs.dry-run && 'true' || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::890742608375:role/GitHubActions-commit-to-control
+          aws-region: us-east-1
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      - name: Commit as github-actions[bot]
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Publish any version tag that has no release
+        run: |
+          for tag in $(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=v:refname); do
+            gh release view "$tag" >/dev/null 2>&1 && continue
+            echo "${DRY_RUN:+would publish: }$tag"
+            [ -n "$DRY_RUN" ] || gh release create "$tag" --verify-tag --title "$tag: commit-to-control" \
+              --notes "$(git tag --list --format='%(contents)' "$tag")"
+          done
+
+      - name: Replace retired default models
+        run: uv run --with boto3 python scripts/heal-models.py "$RUNNER_TEMP/heal.md"
+
+      - name: Open an issue for a retired embedding model
+        run: |
+          grep 'embedding model' "$RUNNER_TEMP/heal.md" | while IFS= read -r line; do
+            title="Retired default embedding model: $(sed 's/.*`\(.*\)`.*/\1/' <<< "$line")"
+            if gh issue list --state open --search "\"$title\" in:title" --json number --jq 'length' | grep -qx 0; then
+              echo "${DRY_RUN:+would open: }$title"
+              [ -n "$DRY_RUN" ] || gh issue create --title "$title" --body "${line#- }"
+            fi
+          done
+
+      - name: Fetch prices
+        run: |
+          uv run --with boto3 python scripts/fetch-pricing.py > pricing.json.new
+          mv pricing.json.new pricing.json
+
+      - name: Commit, tag and publish the changes
+        run: |
+          if git diff --quiet -- commit-to-control README.md pricing.json; then
+            echo "The defaults and pricing.json are current"
+            exit 0
+          fi
+          git diff -- commit-to-control README.md pricing.json
+
+          latest=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
+          IFS=. read -r major minor patch <<< "${latest#v}"
+          next="v$major.$minor.$((patch + 1))"
+          notes=$(grep -v 'embedding model' "$RUNNER_TEMP/heal.md" || true)
+          if ! git diff --quiet -- pricing.json; then
+            notes=$(printf '%s\n\nPrices from the AWS Price List on %s:\n\n```diff\n%s\n```\n' \
+              "$notes" "$(date -u +%F)" "$(git diff -U0 -- pricing.json | tail -n +5)")
+          fi
+          if git diff --quiet -- commit-to-control; then
+            subject="Refresh pricing.json from the AWS Price List"
+          else
+            subject="Replace a retired default model"
+          fi
+
+          if [ -n "$DRY_RUN" ]; then
+            echo "would commit \"$subject\", tag $next on main and publish it with these notes:"
+            echo "$notes"
+            exit 0
+          fi
+          git commit -m "$subject" -m "$notes" -- commit-to-control README.md pricing.json
+          git tag -a "$next" -m "$notes"
+          git push origin HEAD:refs/heads/main "refs/tags/$next"
+          gh release create "$next" --verify-tag --title "$next: commit-to-control" --notes "$notes"

@@ -7,11 +7,11 @@ PRICING_JSON := pricing.json
 
 controls: $(CONTROLS_JSON)
 
-pricing: $(PRICING_JSON)
-
-$(PRICING_JSON):
-	python3 scripts/fetch-pricing.py > $@
-	@echo "Wrote pricing to $@"
+# Always refetch, and replace pricing.json only when the fetch succeeds.
+pricing:
+	python3 scripts/fetch-pricing.py > $(PRICING_JSON).new
+	mv $(PRICING_JSON).new $(PRICING_JSON)
+	@echo "Wrote pricing to $(PRICING_JSON)"
 
 setup-db:
 	psql "$(COMMIT2CONTROL_DB)" -c "CREATE EXTENSION IF NOT EXISTS vector;"
