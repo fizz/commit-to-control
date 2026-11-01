@@ -19,7 +19,7 @@ Environment:
     For bedrock:
         AWS_REGION              AWS region
         EMBED_MODEL             Bedrock embedding model (default: amazon.titan-embed-text-v2:0)
-        JUDGE_MODEL             Bedrock judge model (default: anthropic.claude-3-5-haiku-20241022-v1:0)
+        JUDGE_MODEL             Bedrock judge model (default: us.anthropic.claude-haiku-5-5)
 
     For openai (also covers Ollama, vLLM, etc.):
         OPENAI_API_KEY          API key (use "ollama" for Ollama)
@@ -134,11 +134,12 @@ def _judge_bedrock(client, prompt: str, model: str) -> str:
         accept="application/json", body=body,
     )
     result = json.loads(response["body"].read())
+    text = "".join(b["text"] for b in result["content"] if b.get("type") == "text")
     usage = result.get("usage", {})
     costs.record("judge", model,
                  input_tokens=usage.get("input_tokens", len(prompt) // 4),
-                 output_tokens=usage.get("output_tokens", len(result["content"][0]["text"]) // 4))
-    return result["content"][0]["text"]
+                 output_tokens=usage.get("output_tokens", len(text) // 4))
+    return text
 
 
 def _get_openai_client():
@@ -174,7 +175,7 @@ def get_provider(name: str):
             _embed_bedrock,
             _judge_bedrock,
             os.environ.get("EMBED_MODEL") or "amazon.titan-embed-text-v2:0",
-            os.environ.get("JUDGE_MODEL") or "anthropic.claude-3-5-haiku-20241022-v1:0",
+            os.environ.get("JUDGE_MODEL") or "us.anthropic.claude-haiku-5-5",
         )
     elif name == "openai":
         return (

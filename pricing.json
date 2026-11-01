@@ -3,9 +3,9 @@
     "input": 0.00000002,
     "type": "embedding"
   },
-  "anthropic.claude-3-5-haiku-20241022-v1:0": {
-    "input": 0.0000008,
-    "output": 0.000004,
+  "us.anthropic.claude-haiku-5-5": {
+    "input": 0.00000011,
+    "output": 0.00000055,
     "type": "chat"
   },
   "text-embedding-3-small": {
