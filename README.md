@@ -80,7 +80,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: fizz/commit-to-control@v1
+      - uses: fizz/commit-to-control@a38a5bd886fe18c4defdf2b3f8885c26116c5deb # v1.0.1
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
@@ -94,7 +94,7 @@ For Bedrock with OIDC (no stored credentials):
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
-      - uses: fizz/commit-to-control@v1
+      - uses: fizz/commit-to-control@a38a5bd886fe18c4defdf2b3f8885c26116c5deb # v1.0.1
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:

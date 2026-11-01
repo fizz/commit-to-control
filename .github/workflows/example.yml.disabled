@@ -31,7 +31,7 @@ jobs:
   #       with:
   #         fetch-depth: 0
   #     - name: Map commits to NIST controls
-  #       uses: fizz/commit-to-control@v1
+  #       uses: fizz/commit-to-control@a38a5bd886fe18c4defdf2b3f8885c26116c5deb # v1.0.1
   #       env:
   #         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   #       with:
@@ -53,7 +53,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Map commits to NIST controls
-        uses: fizz/commit-to-control@v1
+        uses: fizz/commit-to-control@a38a5bd886fe18c4defdf2b3f8885c26116c5deb # v1.0.1
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
@@ -68,7 +68,7 @@ jobs:
   #       with:
   #         fetch-depth: 0
   #     - name: Map commits to NIST controls
-  #       uses: fizz/commit-to-control@v1
+  #       uses: fizz/commit-to-control@a38a5bd886fe18c4defdf2b3f8885c26116c5deb # v1.0.1
   #       env:
   #         OPENAI_BASE_URL: http://your-ollama-host:11434/v1
   #         OPENAI_API_KEY: ollama
