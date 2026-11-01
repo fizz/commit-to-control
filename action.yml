@@ -112,9 +112,9 @@ runs:
         # Extract all RELEVANT controls across all commits, deduplicate
         SUMMARY=$({ grep '✓' /tmp/control-mapping.txt || true; } | sed 's/.*✓ //' | sort -u)
         # Aggregate costs by step across all commits
-        EMBED_TOKENS=$(grep '^ *embed' /tmp/control-mapping.txt | awk '{sum += $(NF-1)} END {printf "%d", sum}')
+        EMBED_TOKENS=$(grep '^ *embed' /tmp/control-mapping.txt | awk '{gsub(/\$/, ""); sum += $(NF-1)} END {printf "%d", sum}')
         EMBED_COST=$(grep '^ *embed' /tmp/control-mapping.txt | awk '{sum += $NF} END {printf "%.6f", sum}')
-        JUDGE_TOKENS=$(grep '^ *judge' /tmp/control-mapping.txt | awk '{sum += $(NF-1)} END {printf "%d", sum}')
+        JUDGE_TOKENS=$(grep '^ *judge' /tmp/control-mapping.txt | awk '{gsub(/\$/, ""); sum += $(NF-1)} END {printf "%d", sum}')
         JUDGE_COST=$(grep '^ *judge' /tmp/control-mapping.txt | awk '{sum += $NF} END {printf "%.6f", sum}')
         TOTAL_COST=$(grep '^ *Total' /tmp/control-mapping.txt | awk '{sum += $NF} END {printf "%.6f", sum}')
         EMBED_MODEL=$(grep '^ *embed' /tmp/control-mapping.txt | head -1 | awk '{print $2}')
